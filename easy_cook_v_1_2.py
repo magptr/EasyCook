@@ -10,9 +10,10 @@ from pathlib import Path
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 from tkinter.scrolledtext import ScrolledText
+from datetime import datetime
 
-APP_TITLE = "EasyCook"
-APP_VERSION = "1.2.0"
+APP_TITLE = "Easy Cook"
+APP_VERSION = "1.2.1"
 
 # Default profile directory (same folder as this script)
 SCRIPT_DIR = Path(sys.argv[0]).resolve().parent
@@ -296,6 +297,15 @@ class App(tk.Tk):
         log_frame.pack(fill="both", expand=True, padx=10, pady=10)
         self.log = ScrolledText(log_frame, height=12, wrap="word", state="disabled")
         self.log.pack(fill="both", expand=True, padx=6, pady=6)
+
+        # Set icon
+        try:
+            if os.name == "nt":  # Windows
+                self.iconbitmap(str(SCRIPT_DIR / "icon.ico"))
+            else:  # Linux / macOS
+                self.iconphoto(True, tk.PhotoImage(file=SCRIPT_DIR / "icon.png"))
+        except Exception as e:
+            print(f"Failed to set icon: {e}")
 
         self.refresh_profiles()
         self.after(80, self._poll_log_queue)

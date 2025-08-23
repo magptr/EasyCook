@@ -57,4 +57,4 @@ Traditionally, cooking assets in Unreal relies on placing the assets you want co
 * Use **Save** to store your current list, settings, and paths. Use **Load** to restore them later.
 
 ## Credits
-- [[TraoX1]([https://github.com/TraoX1](https://github.com/Trao-X))](https://github.com/Trao-X) for the logo 
+- [Trao-X](https://github.com/Trao-X) for the logo 

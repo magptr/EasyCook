@@ -298,12 +298,19 @@ class App(tk.Tk):
         self.log = ScrolledText(log_frame, height=12, wrap="word", state="disabled")
         self.log.pack(fill="both", expand=True, padx=6, pady=6)
 
-        # Set icon
+        # Set icon (compatible with PyInstaller bundle)
+        def resource_path(relative_path):
+            try:
+                base_path = sys._MEIPASS
+            except AttributeError:
+                base_path = os.path.abspath(".")
+            return os.path.join(base_path, relative_path)
+
         try:
             if os.name == "nt":  # Windows
-                self.iconbitmap(str(SCRIPT_DIR / "icon.ico"))
+                self.iconbitmap(resource_path("icon.ico"))
             else:  # Linux / macOS
-                self.iconphoto(True, tk.PhotoImage(file=SCRIPT_DIR / "icon.png"))
+                self.iconphoto(True, tk.PhotoImage(file=resource_path("icon.png")))
         except Exception as e:
             print(f"Failed to set icon: {e}")
 

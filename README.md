@@ -48,7 +48,7 @@ Traditionally, cooking assets in Unreal relies on placing the assets you want co
    /Game/Data
    ```
    This represents all assets inside that folder.
-> Note: When you **Run Cook** or **Copy Command**, EasyCook will expand that folder behind the scenes into every `.uasset` inside.
+> Note: When you **Run Cook** or **Copy Command**, EasyCook will expand that folder behind the scenes into every `.uasset` inside, keep in mind it can take some time for large folders containing a high quantity of assets.
 
 ## Tips
 * You can mix individual assets and folders in the same list.

@@ -10,5 +10,5 @@ Traditionally, cooking assets in Unreal relies on placing the assets you want co
 * Speed up your workflow and focus on modding, not setup.
 
 ## Installation
-* **Executable Release**: A prebuilt `.exe` is available in the [Releases](./releases) section. This version does **not** require Python to be installed.
+* **Executable Release**: A prebuilt `.exe` is available in the [Releases]([./releases](https://github.com/magxut/EasyCook4/releases/tag/exe)) section. This version does **not** require Python to be installed.
 * **Python Script**: If you’d like to run or modify the source directly, you can execute the Python script. For this option, you’ll need a local Python installation.

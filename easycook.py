@@ -35,13 +35,13 @@ OBJREF_RE = re.compile(
     r'''(?ix)
     ^
     (?:
-        [A-Za-z_][A-Za-z0-9_]*     # Optional class prefix e.g. DataTable, StaticMesh, Blueprint
-        \s*'\s*                    # Quote after class
+        [A-Za-z_][A-Za-z0-9_]*     # Optional class prefix (e.g. DataTable, StaticMesh, Blueprint)
+        \s*'\s*
     )?
     (?P<pkg>/Game(?:/[^.'"]+)+)    # /Game/... package path
     (?:
-        \\. [^'\"]+                  # .ObjectName
-        \s*'                       # trailing quote
+        \. [^'\"]+                # .ObjectName (optional)
+        \s*'?
     )?
     $
     '''
@@ -52,6 +52,7 @@ OBJREF_RE = re.compile(
 def normalize_asset_path(text: str) -> str:
     """Convert various inputs/obj refs to /Game/... package path."""
     text = text.strip()
+    # Try regex match for Unreal asset reference
     m = OBJREF_RE.match(text)
     if m:
         return m.group("pkg")
@@ -65,9 +66,15 @@ def normalize_asset_path(text: str) -> str:
         if parts:
             parts[-1] = Path(parts[-1]).stem
         return "/Game/" + "/".join(parts)
-    # If it's already /Game but includes extension, drop it
     if text.startswith("/Game/"):
-        return "/".join([*text.split("/")[:-1], Path(text).stem])
+        p = Path(text)
+        parts = list(p.parts)
+        if parts:
+            parts[-1] = Path(parts[-1]).stem
+        return "/".join(parts)
+    m2 = re.search(r"(/Game(?:/[^.'\"]+)+)", text)
+    if m2:
+        return m2.group(1)
     return text
 
 
@@ -298,7 +305,7 @@ class App(tk.Tk):
         self.log = ScrolledText(log_frame, height=12, wrap="word", state="disabled")
         self.log.pack(fill="both", expand=True, padx=6, pady=6)
 
-        # Set icon (compatible with PyInstaller bundle)
+        
         def resource_path(relative_path):
             try:
                 base_path = sys._MEIPASS
@@ -307,9 +314,9 @@ class App(tk.Tk):
             return os.path.join(base_path, relative_path)
 
         try:
-            if os.name == "nt":  # Windows
+            if os.name == "nt": 
                 self.iconbitmap(resource_path("icon.ico"))
-            else:  # Linux / macOS
+            else: 
                 self.iconphoto(True, tk.PhotoImage(file=resource_path("icon.png")))
         except Exception as e:
             print(f"Failed to set icon: {e}")

@@ -15,7 +15,6 @@ from datetime import datetime
 ctk.set_appearance_mode("System")  
 ctk.set_default_color_theme("blue")  
 
-# Define custom theme colors for consistent UI
 THEME_COLOR = {
     "primary": "#1F6AA5",    
     "secondary": "#2E7D32", 
@@ -28,7 +27,7 @@ THEME_COLOR = {
 APP_TITLE = "Easy Cook"
 APP_VERSION = "1.2.1"
 
-# Default profile directory (same folder as this script)
+
 SCRIPT_DIR = Path(sys.argv[0]).resolve().parent
 DEFAULT_PROFILE_NAME = "Default"
 
@@ -43,7 +42,6 @@ TARGET_PLATFORMS = [
     "Mac",
 ]
 
-# Regex to extract a package path from Unreal object reference or raw path
 OBJREF_RE = re.compile(
     r'''(?ix)
     ^
@@ -129,7 +127,7 @@ def folder_to_game_path(folder: Path, content_root: Path | None) -> str | None:
     except Exception:
         folder = Path(folder)
 
-    # If we know the project's Content root, prefer that
+  
     if content_root:
         try:
             content_root = content_root.resolve()
@@ -143,7 +141,7 @@ def folder_to_game_path(folder: Path, content_root: Path | None) -> str | None:
                 return "/Game"
             return "/Game/" + "/".join(rel.parts)
 
-    # Fallback: search for a "Content" segment in the path
+    # Fallback
     parts = list(folder.parts)
     if "Content" in parts:
         idx = parts.index("Content")
@@ -188,25 +186,19 @@ class App(ctk.CTk):
         self.geometry("980x720")
         self.minsize(900, 620)
         
-        # Set app corner radius and appearance
         self._set_appearance_mode(ctk.get_appearance_mode())  # Use system theme as default
         
-        # Configure grid layout
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(0, weight=1)
-        
-        # Add theme mode toggle
+
         self._appearance_mode_var = tk.StringVar(value=ctk.get_appearance_mode())
         self._create_theme_mode_toggle()
 
-        # State: backing store for list items so we can track folders distinctly
-        # items: list[ {"type":"asset","value":"/Game/..."} | {"type":"folder","value":"C:/.../SomeFolder"} ]
         self.items: list[dict] = []
         self.proc = None
         self.proc_thread = None
         self.log_queue = queue.Queue()
 
-        # Top: Paths
         paths = ctk.CTkFrame(self)
         paths.pack(fill="x", padx=10, pady=(10, 6))
         
@@ -225,13 +217,13 @@ class App(ctk.CTk):
 
         paths.columnconfigure(1, weight=1)
 
-        # Middle: Assets & Options
+        
         middle = ctk.CTkFrame(self)
         middle.pack(fill="both", expand=True, padx=10, pady=6)
         middle.columnconfigure(0, weight=3)
         middle.columnconfigure(1, weight=2)
 
-        # Assets panel
+        
         assets_frame = ctk.CTkFrame(middle)
         assets_frame.grid(row=0, column=0, sticky="nsew", padx=(0,6))
         assets_frame.columnconfigure(0, weight=1)
@@ -247,23 +239,23 @@ class App(ctk.CTk):
         ctk.CTkButton(entry_row, text="Paste & Add", command=self.paste_add).pack(side="left", padx=4)
         ctk.CTkButton(entry_row, text="Add Folder…", command=self.add_folder).pack(side="left", padx=4)
 
-        # Create a better styled custom listbox inside a frame
+        
         listbox_frame = ctk.CTkFrame(assets_frame)
         listbox_frame.grid(row=2, column=0, sticky="nsew", padx=6, pady=(0,6))
         listbox_frame.columnconfigure(0, weight=1)
         listbox_frame.rowconfigure(0, weight=1)
         
-        # Detect if we're in dark or light mode to set appropriate listbox colors
+        
         if ctk.get_appearance_mode() == "Dark":
             bg_color = ctk.ThemeManager.theme["CTkFrame"]["fg_color"][1]
-            fg_color = "#DCE4EE"  # Light text for dark mode
+            fg_color = "#DCE4EE"
             select_bg = THEME_COLOR["primary"]
         else:
             bg_color = ctk.ThemeManager.theme["CTkFrame"]["fg_color"][0]
-            fg_color = "#1A1A1A"  # Dark text for light mode
+            fg_color = "#1A1A1A"
             select_bg = THEME_COLOR["primary"]
             
-        # Create the listbox with custom styling
+       
         self.listbox = tk.Listbox(
             listbox_frame, 
             selectmode=tk.EXTENDED, 
@@ -278,7 +270,7 @@ class App(ctk.CTk):
         )
         self.listbox.grid(row=0, column=0, sticky="nsew")
         
-        # Add a scrollbar
+        
         scrollbar = ctk.CTkScrollbar(listbox_frame, command=self.listbox.yview)
         scrollbar.grid(row=0, column=1, sticky="ns")
         self.listbox.config(yscrollcommand=scrollbar.set)
@@ -290,7 +282,7 @@ class App(ctk.CTk):
         ctk.CTkButton(btn_row, text="Remove Selected", command=self.remove_selected).pack(side="left")
         ctk.CTkButton(btn_row, text="Clear", command=self.clear_items).pack(side="left", padx=6)
 
-        # Options panel
+        
         options = ctk.CTkFrame(middle)
         options.grid(row=0, column=1, sticky="nsew")
         
@@ -333,7 +325,7 @@ class App(ctk.CTk):
         for i in range(3):
             options.columnconfigure(i, weight=1)
 
-        # Profile Management Section
+  
         profile_frame = ctk.CTkFrame(self)
         profile_frame.pack(fill="x", padx=10, pady=(6,0))
         
@@ -342,21 +334,18 @@ class App(ctk.CTk):
         
         profile_top = ctk.CTkFrame(profile_frame)
         profile_top.pack(fill="x", padx=8, pady=8)
-        
-        # Profile name entry and save
+
         ctk.CTkLabel(profile_top, text="Profile Name:").pack(side="left")
         self.profile_name_var = tk.StringVar(value=DEFAULT_PROFILE_NAME)
         ctk.CTkEntry(profile_top, textvariable=self.profile_name_var, width=150).pack(side="left", padx=(8,12))
         ctk.CTkButton(profile_top, text="Save Profile", command=self.save_profile).pack(side="left", padx=(0,16))
         
-        # Profile selection and load
         ctk.CTkLabel(profile_top, text="Load Profile:").pack(side="left")
         self.profile_selector = ctk.CTkComboBox(profile_top, width=200)
         self.profile_selector.pack(side="left", padx=(8,8))
         ctk.CTkButton(profile_top, text="Load", command=self.load_selected_profile).pack(side="left", padx=(0,8))
         ctk.CTkButton(profile_top, text="Refresh", command=self.refresh_profiles).pack(side="left")
 
-        # Cooking Controls Section
         controls = ctk.CTkFrame(self)
         controls.pack(fill="x", padx=10, pady=(8,0))
         
@@ -366,7 +355,6 @@ class App(ctk.CTk):
         controls_inner = ctk.CTkFrame(controls)
         controls_inner.pack(fill="x", padx=8, pady=8)
         
-        # Run controls with custom colors
         self.run_btn = ctk.CTkButton(controls_inner, text="Run Cook", command=self.run_cook,
                                fg_color=THEME_COLOR["secondary"], hover_color=ctk.ThemeManager.theme["CTkButton"]["hover_color"][1])
         self.run_btn.pack(side="left", padx=(0,12))
@@ -376,24 +364,20 @@ class App(ctk.CTk):
         self.preview_btn = ctk.CTkButton(controls_inner, text="Copy Command", command=self.copy_command)
         self.preview_btn.pack(side="left")
 
-        # Log section
         log_frame = ctk.CTkFrame(self)
         log_frame.pack(fill="both", expand=True, padx=10, pady=10)
         
         log_label = ctk.CTkLabel(log_frame, text="Log", font=ctk.CTkFont(size=14, weight="bold"))
         log_label.pack(fill="x", padx=8, pady=(8,0))
         
-        # Create a custom scrolled text area using CTkTextbox
         self.log = ctk.CTkTextbox(log_frame, height=200, wrap="word", state="disabled")
         self.log.pack(fill="both", expand=True, padx=6, pady=6)
 
-        
         def resource_path(relative_path):
             try:
                 base_path = sys._MEIPASS
             except AttributeError:
                 base_path = os.path.abspath(".")
-                # Try looking in resources folder if not found
                 if not os.path.exists(os.path.join(base_path, relative_path)):
                     resources_dir = os.path.join(base_path, "resources")
                     if os.path.exists(os.path.join(resources_dir, relative_path)):
@@ -401,12 +385,10 @@ class App(ctk.CTk):
             return os.path.join(base_path, relative_path)
 
         try:
-            # Set window icon based on platform
             if os.name == "nt": 
                 icon_path = resource_path("icon.ico")
                 if os.path.exists(icon_path):
                     self.iconbitmap(icon_path)
-                    # Also set the taskbar icon
                     self.after(100, lambda: self.wm_iconbitmap(icon_path))
             else: 
                 icon_path = resource_path("icon.png")
@@ -414,7 +396,6 @@ class App(ctk.CTk):
                     icon_img = tk.PhotoImage(file=icon_path)
                     self.iconphoto(True, icon_img)
                     
-            # Load the preview image if needed later
             self.preview_img_path = resource_path("preview.png")
         except Exception as e:
             print(f"Failed to set icon: {e}")
@@ -443,7 +424,6 @@ class App(ctk.CTk):
         pkg = normalize_asset_path(pkg)
         if not pkg.startswith("/Game/"):
             return False
-        # dedupe assets
         if any(it["type"] == "asset" and it["value"].lower() == pkg.lower() for it in self.items):
             return False
         self.items.append({"type": "asset", "value": pkg})
@@ -472,7 +452,6 @@ class App(ctk.CTk):
         if not folder:
             return
         folder_path = str(Path(folder).resolve())
-        # dedupe folder entries
         if any(it["type"] == "folder" and it["value"].lower() == folder_path.lower() for it in self.items):
             self._log("Folder already in list.")
             return
@@ -529,7 +508,6 @@ class App(ctk.CTk):
         if DEFAULT_PROFILE_NAME not in names:
             names.insert(0, DEFAULT_PROFILE_NAME)
         
-        # Update combobox values
         self.profile_selector.configure(values=names)
         if not self.profile_selector.get() and names:
             self.profile_selector.set(names[0])
@@ -599,18 +577,17 @@ class App(ctk.CTk):
     def _infer_content_root(self) -> Path | None:
         proj = self.uproject_var.get().strip().strip('"')
         if proj and Path(proj).is_file():
-            pr = Path(proj).resolve().parent  # project root
+            pr = Path(proj).resolve().parent
             c = pr / "Content"
             if c.exists():
                 return c.resolve()
         return None
 
     def _resolve_items_to_assets(self, show_loading: bool = True) -> list[str]:
-        # Gather explicit assets
         assets_set = set(
             it["value"].strip() for it in self.items if it["type"] == "asset"
         )
-        # Expand folders
+
         folders = [Path(it["value"]) for it in self.items if it["type"] == "folder"]
         if not folders:
             return sorted(assets_set)
@@ -651,7 +628,7 @@ class App(ctk.CTk):
         t = threading.Thread(target=worker, daemon=True)
         t.start()
 
-        # pump UI until done
+
         while not stop_flag["stop"]:
             if loading_win:
                 loading_win.update()
@@ -779,7 +756,6 @@ class App(ctk.CTk):
         theme_frame = ctk.CTkFrame(self)
         theme_frame.place(relx=0.97, rely=0.02, anchor="ne")
         
-        # Create a switch for theme toggling
         switch_var = ctk.StringVar(value="Dark" if ctk.get_appearance_mode() == "Dark" else "Light")
         switch = ctk.CTkSwitch(
             theme_frame, 
@@ -797,13 +773,12 @@ class App(ctk.CTk):
         new_mode = "Dark" if self._theme_switch.get() == "Dark" else "Light"
         ctk.set_appearance_mode(new_mode)
         
-        # Update listbox colors based on new theme
         if new_mode == "Dark":
             bg_color = ctk.ThemeManager.theme["CTkFrame"]["fg_color"][1]
-            fg_color = "#DCE4EE"  # Light text for dark mode
+            fg_color = "#DCE4EE"  
         else:
             bg_color = ctk.ThemeManager.theme["CTkFrame"]["fg_color"][0]
-            fg_color = "#1A1A1A"  # Dark text for light mode
+            fg_color = "#1A1A1A"  
             
         self.listbox.configure(bg=bg_color, fg=fg_color)
     
@@ -811,9 +786,9 @@ class App(ctk.CTk):
         """Apply the appearance mode to a color value"""
         if isinstance(value, (tuple, list)):
             if ctk.get_appearance_mode() == "Dark":
-                return value[1]  # Use dark mode color
+                return value[1]  
             else:
-                return value[0]  # Use light mode color
+                return value[0]  
         return value
 
     def _log(self, text):

@@ -1,7 +1,7 @@
 # EasyCook4
 A simple Python application designed to streamline asset cooking for Unreal Engine 4, primarily for modding purposes.
 
-![preview](resources/preview.png)
+![preview](resources/previewnew.png)
 
 # Why bother?
 Traditionally, cooking assets in Unreal relies on placing the assets you want cooked into maps, then specifying that map in the cooking process, this often results in unnecessary cooking of additional shaders, assets, and other content you don’t actually need. This wastes both **time** and **resources**.

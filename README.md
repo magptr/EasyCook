@@ -15,6 +15,10 @@ Traditionally, cooking assets in Unreal relies on placing the assets you want co
 * **Executable Release**: A prebuilt `.exe` is available in Releases. This version does **not** require Python to be installed.
 * **Python Script**: If you’d like to run or modify the source directly, you can execute the Python script. For this option, you’ll need a local Python installation.
 
+> [!WARNING]  
+> The `.exe` release is **out of date**. Please run the **Python script (`main.py`)** for the latest version.
+
+
 # How to add to cook list
 
 ## Adding a Single Asset

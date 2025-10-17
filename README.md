@@ -1,5 +1,5 @@
 # EasyCook4
-A simple Python application designed to streamline asset cooking for Unreal Engine 4, primarily for modding purposes.
+A GUI Python application designed to make asset cooking for Unreal Engine 4 easier, primarily for modding purposes, with a focus on cooked asset projects.
 
 ![preview](resources/preview.png)
 

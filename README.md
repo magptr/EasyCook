@@ -18,6 +18,22 @@ Traditionally, cooking assets in Unreal relies on placing the assets you want co
 > [!WARNING]  
 > The `.exe` release is **out of date**. Please run the **Python script (`main.py`)** for the latest version which resolves many issues.
 
+## From source (refactored structure)
+
+The project is now organized into a small package for clarity:
+
+- `easycook/`
+   - `constants.py` — App title/version, theme colors, target platforms, profile defaults
+   - `utils.py` — Path normalization, folder scanning, resource path helper
+   - `ui.py` — The `App` class and UI logic
+- `easycookGUI.py` — Thin entry point that launches the UI
+
+Run the app with Python:
+
+```powershell
+python .\easycookGUI.py
+```
+
 
 # How to add to cook list
 

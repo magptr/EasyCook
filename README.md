@@ -16,7 +16,7 @@ Traditionally, cooking assets in Unreal relies on placing the assets you want co
 * **Python Script**: If you’d like to run or modify the source directly, you can execute the Python script. For this option, you’ll need a local Python installation.
 
 > [!WARNING]  
-> The `.exe` release is **out of date**. Please run the **Python script (`main.py`)** for the latest version which resolves many issues.
+> The `.exe` release is **out of date**. Please run the **Python script (`main.py`)** for the latest version which resolves many issues. A new one will be released in the upcoming release.
 
 
 # How to add to cook list

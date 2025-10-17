@@ -8,14 +8,26 @@ import threading
 import time
 from pathlib import Path
 import tkinter as tk
-from tkinter import ttk, filedialog, messagebox
-from tkinter.scrolledtext import ScrolledText
+import customtkinter as ctk
+from tkinter import filedialog, messagebox
 from datetime import datetime
+
+ctk.set_appearance_mode("System")  
+ctk.set_default_color_theme("blue")  
+
+THEME_COLOR = {
+    "primary": "#1F6AA5",    
+    "secondary": "#2E7D32", 
+    "danger": "#C62828",     
+    "warning": "#F57F17",    
+    "text_light": "#FFFFFF", 
+    "text_dark": "#1A1A1A",  
+}
 
 APP_TITLE = "Easy Cook"
 APP_VERSION = "1.2.1"
 
-# Default profile directory (same folder as this script)
+
 SCRIPT_DIR = Path(sys.argv[0]).resolve().parent
 DEFAULT_PROFILE_NAME = "Default"
 
@@ -30,7 +42,6 @@ TARGET_PLATFORMS = [
     "Mac",
 ]
 
-# Regex to extract a package path from Unreal object reference or raw path
 OBJREF_RE = re.compile(
     r'''(?ix)
     ^
@@ -116,7 +127,7 @@ def folder_to_game_path(folder: Path, content_root: Path | None) -> str | None:
     except Exception:
         folder = Path(folder)
 
-    # If we know the project's Content root, prefer that
+  
     if content_root:
         try:
             content_root = content_root.resolve()
@@ -130,7 +141,7 @@ def folder_to_game_path(folder: Path, content_root: Path | None) -> str | None:
                 return "/Game"
             return "/Game/" + "/".join(rel.parts)
 
-    # Fallback: search for a "Content" segment in the path
+    # Fallback
     parts = list(folder.parts)
     if "Content" in parts:
         idx = parts.index("Content")
@@ -144,16 +155,16 @@ def folder_to_game_path(folder: Path, content_root: Path | None) -> str | None:
 
 # ----------------- UI -----------------
 
-class CollapsibleFrame(ttk.Frame):
+class CollapsibleFrame(ctk.CTkFrame):
     def __init__(self, master, text="", *args, **kwargs):
         super().__init__(master, *args, **kwargs)
         self.columnconfigure(0, weight=1)
         self._expanded = tk.BooleanVar(value=False)
-        self._header = ttk.Frame(self)
+        self._header = ctk.CTkFrame(self)
         self._header.grid(row=0, column=0, sticky="ew")
-        self._btn = ttk.Checkbutton(self._header, text=text, variable=self._expanded, style="Toolbutton", command=self._toggle)
-        self._btn.pack(side="left", padx=2, pady=2)
-        self._body = ttk.Frame(self)
+        self._btn = ctk.CTkSwitch(self._header, text=text, variable=self._expanded, command=self._toggle)
+        self._btn.pack(side="left", padx=5, pady=5)
+        self._body = ctk.CTkFrame(self)
         self._body.grid(row=1, column=0, sticky="nsew")
         self._body.grid_remove()
 
@@ -168,79 +179,128 @@ class CollapsibleFrame(ttk.Frame):
         return self._body
 
 
-class App(tk.Tk):
+class App(ctk.CTk):
     def __init__(self):
         super().__init__()
         self.title(f"{APP_TITLE} v{APP_VERSION}")
         self.geometry("980x720")
         self.minsize(900, 620)
+        
+        self._set_appearance_mode(ctk.get_appearance_mode())  # Use system theme as default
+        
+        self.grid_columnconfigure(0, weight=1)
+        self.grid_rowconfigure(0, weight=1)
 
-        # State: backing store for list items so we can track folders distinctly
-        # items: list[ {"type":"asset","value":"/Game/..."} | {"type":"folder","value":"C:/.../SomeFolder"} ]
+        self._appearance_mode_var = tk.StringVar(value=ctk.get_appearance_mode())
+        self._create_theme_mode_toggle()
+
         self.items: list[dict] = []
         self.proc = None
         self.proc_thread = None
         self.log_queue = queue.Queue()
 
-        # Top: Paths
-        paths = ttk.LabelFrame(self, text="Paths")
+        paths = ctk.CTkFrame(self)
         paths.pack(fill="x", padx=10, pady=(10, 6))
-
+        
+        paths_label = ctk.CTkLabel(paths, text="Paths", font=ctk.CTkFont(size=14, weight="bold"))
+        paths_label.grid(row=0, column=0, columnspan=3, sticky="w", padx=8, pady=(8, 4))
+        
         self.ue_path_var = tk.StringVar()
-        ttk.Label(paths, text="UE4Editor.exe:").grid(row=0, column=0, sticky="w", padx=8, pady=6)
-        ttk.Entry(paths, textvariable=self.ue_path_var).grid(row=0, column=1, sticky="ew", padx=(0,8), pady=6)
-        ttk.Button(paths, text="Browse…", command=self.pick_ue).grid(row=0, column=2, sticky="e", padx=8, pady=6)
+        ctk.CTkLabel(paths, text="UE4Editor.exe:").grid(row=1, column=0, sticky="w", padx=8, pady=6)
+        ctk.CTkEntry(paths, textvariable=self.ue_path_var).grid(row=1, column=1, sticky="ew", padx=(0,8), pady=6)
+        ctk.CTkButton(paths, text="Browse…", command=self.pick_ue).grid(row=1, column=2, sticky="e", padx=8, pady=6)
 
         self.uproject_var = tk.StringVar()
-        ttk.Label(paths, text=".uproject:").grid(row=1, column=0, sticky="w", padx=8, pady=6)
-        ttk.Entry(paths, textvariable=self.uproject_var).grid(row=1, column=1, sticky="ew", padx=(0,8), pady=6)
-        ttk.Button(paths, text="Browse…", command=self.pick_project).grid(row=1, column=2, sticky="e", padx=8, pady=6)
+        ctk.CTkLabel(paths, text=".uproject:").grid(row=2, column=0, sticky="w", padx=8, pady=6)
+        ctk.CTkEntry(paths, textvariable=self.uproject_var).grid(row=2, column=1, sticky="ew", padx=(0,8), pady=6)
+        ctk.CTkButton(paths, text="Browse…", command=self.pick_project).grid(row=2, column=2, sticky="e", padx=8, pady=6)
 
         paths.columnconfigure(1, weight=1)
 
-        # Middle: Assets & Options
-        middle = ttk.Frame(self)
+        
+        middle = ctk.CTkFrame(self)
         middle.pack(fill="both", expand=True, padx=10, pady=6)
         middle.columnconfigure(0, weight=3)
         middle.columnconfigure(1, weight=2)
 
-        # Assets panel
-        assets_frame = ttk.LabelFrame(middle, text="Cook List")
+        
+        assets_frame = ctk.CTkFrame(middle)
         assets_frame.grid(row=0, column=0, sticky="nsew", padx=(0,6))
         assets_frame.columnconfigure(0, weight=1)
+        
+        assets_label = ctk.CTkLabel(assets_frame, text="Cook List", font=ctk.CTkFont(size=14, weight="bold"))
+        assets_label.grid(row=0, column=0, sticky="w", padx=8, pady=(8, 0))
 
-        entry_row = ttk.Frame(assets_frame)
-        entry_row.grid(row=0, column=0, sticky="ew", padx=6, pady=6)
-        self.asset_entry = ttk.Entry(entry_row)
+        entry_row = ctk.CTkFrame(assets_frame)
+        entry_row.grid(row=1, column=0, sticky="ew", padx=6, pady=6)
+        self.asset_entry = ctk.CTkEntry(entry_row)
         self.asset_entry.pack(side="left", fill="x", expand=True)
-        ttk.Button(entry_row, text="Add Asset", command=self.add_asset).pack(side="left", padx=4)
-        ttk.Button(entry_row, text="Paste & Add", command=self.paste_add).pack(side="left", padx=4)
-        ttk.Button(entry_row, text="Add Folder…", command=self.add_folder).pack(side="left", padx=4)
+        ctk.CTkButton(entry_row, text="Add Asset", command=self.add_asset).pack(side="left", padx=4)
+        ctk.CTkButton(entry_row, text="Paste & Add", command=self.paste_add).pack(side="left", padx=4)
+        ctk.CTkButton(entry_row, text="Add Folder…", command=self.add_folder).pack(side="left", padx=4)
 
-        self.listbox = tk.Listbox(assets_frame, selectmode=tk.EXTENDED)
-        self.listbox.grid(row=1, column=0, sticky="nsew", padx=6, pady=(0,6))
-        assets_frame.rowconfigure(1, weight=1)
+        
+        listbox_frame = ctk.CTkFrame(assets_frame)
+        listbox_frame.grid(row=2, column=0, sticky="nsew", padx=6, pady=(0,6))
+        listbox_frame.columnconfigure(0, weight=1)
+        listbox_frame.rowconfigure(0, weight=1)
+        
+        
+        if ctk.get_appearance_mode() == "Dark":
+            bg_color = ctk.ThemeManager.theme["CTkFrame"]["fg_color"][1]
+            fg_color = "#DCE4EE"
+            select_bg = THEME_COLOR["primary"]
+        else:
+            bg_color = ctk.ThemeManager.theme["CTkFrame"]["fg_color"][0]
+            fg_color = "#1A1A1A"
+            select_bg = THEME_COLOR["primary"]
+            
+       
+        self.listbox = tk.Listbox(
+            listbox_frame, 
+            selectmode=tk.EXTENDED, 
+            bg=bg_color,
+            fg=fg_color,
+            selectbackground=select_bg,
+            selectforeground="#FFFFFF",
+            borderwidth=0,
+            highlightthickness=1,
+            highlightbackground=ctk.ThemeManager.theme["CTkFrame"]["border_color"][1],
+            font=("Segoe UI", 11)
+        )
+        self.listbox.grid(row=0, column=0, sticky="nsew")
+        
+        
+        scrollbar = ctk.CTkScrollbar(listbox_frame, command=self.listbox.yview)
+        scrollbar.grid(row=0, column=1, sticky="ns")
+        self.listbox.config(yscrollcommand=scrollbar.set)
+        
+        assets_frame.rowconfigure(2, weight=1)
 
-        btn_row = ttk.Frame(assets_frame)
-        btn_row.grid(row=2, column=0, sticky="ew", padx=6, pady=(0,6))
-        ttk.Button(btn_row, text="Remove Selected", command=self.remove_selected).pack(side="left")
-        ttk.Button(btn_row, text="Clear", command=self.clear_items).pack(side="left", padx=6)
+        btn_row = ctk.CTkFrame(assets_frame)
+        btn_row.grid(row=3, column=0, sticky="ew", padx=6, pady=(0,6))
+        ctk.CTkButton(btn_row, text="Remove Selected", command=self.remove_selected).pack(side="left")
+        ctk.CTkButton(btn_row, text="Clear", command=self.clear_items).pack(side="left", padx=6)
 
-        # Options panel
-        options = ttk.LabelFrame(middle, text="Options")
+        
+        options = ctk.CTkFrame(middle)
         options.grid(row=0, column=1, sticky="nsew")
+        
+        options_label = ctk.CTkLabel(options, text="Options", font=ctk.CTkFont(size=14, weight="bold"))
+        options_label.grid(row=0, column=0, columnspan=3, sticky="w", padx=8, pady=(8, 4))
 
-        ttk.Label(options, text="Target Platform:").grid(row=0, column=0, sticky="w", padx=8, pady=(8,4))
+        ctk.CTkLabel(options, text="Target Platform:").grid(row=1, column=0, sticky="w", padx=8, pady=(8,4))
         self.platform_var = tk.StringVar(value="WindowsNoEditor")
-        ttk.Combobox(options, textvariable=self.platform_var, values=TARGET_PLATFORMS, state="readonly").grid(row=0, column=1, sticky="ew", padx=(0,8), pady=(8,4))
+        platform_combo = ctk.CTkComboBox(options, variable=self.platform_var, values=TARGET_PLATFORMS, state="readonly")
+        platform_combo.grid(row=1, column=1, sticky="ew", padx=(0,8), pady=(8,4))
 
-        ttk.Label(options, text="Cultures (optional):").grid(row=1, column=0, sticky="w", padx=8, pady=4)
+        ctk.CTkLabel(options, text="Cultures (optional):").grid(row=2, column=0, sticky="w", padx=8, pady=4)
         self.cultures_var = tk.StringVar()
-        ttk.Entry(options, textvariable=self.cultures_var).grid(row=1, column=1, sticky="ew", padx=(0,8), pady=4)
-        ttk.Label(options, text="e.g. en,fr,de").grid(row=1, column=2, sticky="w", padx=4)
+        ctk.CTkEntry(options, textvariable=self.cultures_var).grid(row=2, column=1, sticky="ew", padx=(0,8), pady=4)
+        ctk.CTkLabel(options, text="e.g. en,fr,de").grid(row=2, column=2, sticky="w", padx=4)
 
-        self.adv = CollapsibleFrame(options, text="Advanced Settings ▾")
-        self.adv.grid(row=2, column=0, columnspan=3, sticky="ew", padx=4, pady=(6,8))
+        self.adv = CollapsibleFrame(options, text="Advanced Settings")
+        self.adv.grid(row=3, column=0, columnspan=3, sticky="ew", padx=4, pady=(6,8))
         adv = self.adv.body
         self.opt_iterate = tk.BooleanVar(value=False)
         self.opt_unversioned = tk.BooleanVar(value=False)
@@ -250,74 +310,93 @@ class App(tk.Tk):
         self.opt_stdout = tk.BooleanVar(value=True)
         self.opt_additional = tk.StringVar(value="")
 
-        ttk.Checkbutton(adv, text="Iterative (-iterate)", variable=self.opt_iterate).grid(row=0, column=0, sticky="w", padx=8, pady=4)
-        ttk.Checkbutton(adv, text="Unversioned (-unversioned)", variable=self.opt_unversioned).grid(row=1, column=0, sticky="w", padx=8, pady=4)
-        ttk.Checkbutton(adv, text="Compressed (-compressed)", variable=self.opt_compressed).grid(row=2, column=0, sticky="w", padx=8, pady=4)
-        ttk.Checkbutton(adv, text="No Perforce (-nop4)", variable=self.opt_nop4).grid(row=0, column=1, sticky="w", padx=8, pady=4)
-        ttk.Checkbutton(adv, text="Unattended (-unattended)", variable=self.opt_unattended).grid(row=1, column=1, sticky="w", padx=8, pady=4)
-        ttk.Checkbutton(adv, text="Log to console (-stdout)", variable=self.opt_stdout).grid(row=2, column=1, sticky="w", padx=8, pady=4)
+        ctk.CTkCheckBox(adv, text="Iterative (-iterate)", variable=self.opt_iterate).grid(row=0, column=0, sticky="w", padx=8, pady=4)
+        ctk.CTkCheckBox(adv, text="Unversioned (-unversioned)", variable=self.opt_unversioned).grid(row=1, column=0, sticky="w", padx=8, pady=4)
+        ctk.CTkCheckBox(adv, text="Compressed (-compressed)", variable=self.opt_compressed).grid(row=2, column=0, sticky="w", padx=8, pady=4)
+        ctk.CTkCheckBox(adv, text="No Perforce (-nop4)", variable=self.opt_nop4).grid(row=0, column=1, sticky="w", padx=8, pady=4)
+        ctk.CTkCheckBox(adv, text="Unattended (-unattended)", variable=self.opt_unattended).grid(row=1, column=1, sticky="w", padx=8, pady=4)
+        ctk.CTkCheckBox(adv, text="Log to console (-stdout)", variable=self.opt_stdout).grid(row=2, column=1, sticky="w", padx=8, pady=4)
 
-        ttk.Label(adv, text="Extra flags:").grid(row=3, column=0, sticky="w", padx=8, pady=(8,4))
-        ttk.Entry(adv, textvariable=self.opt_additional).grid(row=3, column=1, columnspan=2, sticky="ew", padx=(0,8), pady=(8,4))
+        ctk.CTkLabel(adv, text="Extra flags:").grid(row=3, column=0, sticky="w", padx=8, pady=(8,4))
+        ctk.CTkEntry(adv, textvariable=self.opt_additional).grid(row=3, column=1, columnspan=2, sticky="ew", padx=(0,8), pady=(8,4))
 
         for i in range(3):
             adv.columnconfigure(i, weight=1)
         for i in range(3):
             options.columnconfigure(i, weight=1)
 
-        # Profile Management Section
-        profile_frame = ttk.LabelFrame(self, text="Profile Management")
+  
+        profile_frame = ctk.CTkFrame(self)
         profile_frame.pack(fill="x", padx=10, pady=(6,0))
         
-        profile_top = ttk.Frame(profile_frame)
+        profile_label = ctk.CTkLabel(profile_frame, text="Profile Management", font=ctk.CTkFont(size=14, weight="bold"))
+        profile_label.pack(fill="x", padx=8, pady=(8,0))
+        
+        profile_top = ctk.CTkFrame(profile_frame)
         profile_top.pack(fill="x", padx=8, pady=8)
-        
-        # Profile name entry and save
-        ttk.Label(profile_top, text="Profile Name:").pack(side="left")
-        self.profile_name_var = tk.StringVar(value=DEFAULT_PROFILE_NAME)
-        ttk.Entry(profile_top, textvariable=self.profile_name_var, width=20).pack(side="left", padx=(8,12))
-        ttk.Button(profile_top, text="Save Profile", command=self.save_profile).pack(side="left", padx=(0,16))
-        
-        # Profile selection and load
-        ttk.Label(profile_top, text="Load Profile:").pack(side="left")
-        self.profile_selector = ttk.Combobox(profile_top, state="readonly", width=25)
-        self.profile_selector.pack(side="left", padx=(8,8))
-        ttk.Button(profile_top, text="Load", command=self.load_selected_profile).pack(side="left", padx=(0,8))
-        ttk.Button(profile_top, text="Refresh", command=self.refresh_profiles).pack(side="left")
 
-        # Cooking Controls Section
-        controls = ttk.LabelFrame(self, text="Cooking Operations")
+        ctk.CTkLabel(profile_top, text="Profile Name:").pack(side="left")
+        self.profile_name_var = tk.StringVar(value=DEFAULT_PROFILE_NAME)
+        ctk.CTkEntry(profile_top, textvariable=self.profile_name_var, width=150).pack(side="left", padx=(8,12))
+        ctk.CTkButton(profile_top, text="Save Profile", command=self.save_profile).pack(side="left", padx=(0,16))
+        
+        ctk.CTkLabel(profile_top, text="Load Profile:").pack(side="left")
+        self.profile_selector = ctk.CTkComboBox(profile_top, width=200)
+        self.profile_selector.pack(side="left", padx=(8,8))
+        ctk.CTkButton(profile_top, text="Load", command=self.load_selected_profile).pack(side="left", padx=(0,8))
+        ctk.CTkButton(profile_top, text="Refresh", command=self.refresh_profiles).pack(side="left")
+
+        controls = ctk.CTkFrame(self)
         controls.pack(fill="x", padx=10, pady=(8,0))
         
-        controls_inner = ttk.Frame(controls)
+        controls_label = ctk.CTkLabel(controls, text="Cooking Operations", font=ctk.CTkFont(size=14, weight="bold"))
+        controls_label.pack(fill="x", padx=8, pady=(8,0))
+        
+        controls_inner = ctk.CTkFrame(controls)
         controls_inner.pack(fill="x", padx=8, pady=8)
         
-        # Run controls
-        self.run_btn = ttk.Button(controls_inner, text="Run Cook", command=self.run_cook)
+        self.run_btn = ctk.CTkButton(controls_inner, text="Run Cook", command=self.run_cook,
+                               fg_color=THEME_COLOR["secondary"], hover_color=ctk.ThemeManager.theme["CTkButton"]["hover_color"][1])
         self.run_btn.pack(side="left", padx=(0,12))
-        self.cancel_btn = ttk.Button(controls_inner, text="Cancel", command=self.cancel_cook, state="disabled")
+        self.cancel_btn = ctk.CTkButton(controls_inner, text="Cancel", command=self.cancel_cook, state="disabled",
+                                 fg_color=THEME_COLOR["danger"], hover_color="#B71C1C")
         self.cancel_btn.pack(side="left", padx=(0,12))
-        self.preview_btn = ttk.Button(controls_inner, text="Copy Command", command=self.copy_command)
+        self.preview_btn = ctk.CTkButton(controls_inner, text="Copy Command", command=self.copy_command)
         self.preview_btn.pack(side="left")
 
-        log_frame = ttk.LabelFrame(self, text="Log")
+        log_frame = ctk.CTkFrame(self)
         log_frame.pack(fill="both", expand=True, padx=10, pady=10)
-        self.log = ScrolledText(log_frame, height=12, wrap="word", state="disabled")
+        
+        log_label = ctk.CTkLabel(log_frame, text="Log", font=ctk.CTkFont(size=14, weight="bold"))
+        log_label.pack(fill="x", padx=8, pady=(8,0))
+        
+        self.log = ctk.CTkTextbox(log_frame, height=200, wrap="word", state="disabled")
         self.log.pack(fill="both", expand=True, padx=6, pady=6)
 
-        
         def resource_path(relative_path):
             try:
                 base_path = sys._MEIPASS
             except AttributeError:
                 base_path = os.path.abspath(".")
+                if not os.path.exists(os.path.join(base_path, relative_path)):
+                    resources_dir = os.path.join(base_path, "resources")
+                    if os.path.exists(os.path.join(resources_dir, relative_path)):
+                        return os.path.join(resources_dir, relative_path)
             return os.path.join(base_path, relative_path)
 
         try:
             if os.name == "nt": 
-                self.iconbitmap(resource_path("icon.ico"))
+                icon_path = resource_path("icon.ico")
+                if os.path.exists(icon_path):
+                    self.iconbitmap(icon_path)
+                    self.after(100, lambda: self.wm_iconbitmap(icon_path))
             else: 
-                self.iconphoto(True, tk.PhotoImage(file=resource_path("icon.png")))
+                icon_path = resource_path("icon.png")
+                if os.path.exists(icon_path):
+                    icon_img = tk.PhotoImage(file=icon_path)
+                    self.iconphoto(True, icon_img)
+                    
+            self.preview_img_path = resource_path("preview.png")
         except Exception as e:
             print(f"Failed to set icon: {e}")
 
@@ -345,7 +424,6 @@ class App(tk.Tk):
         pkg = normalize_asset_path(pkg)
         if not pkg.startswith("/Game/"):
             return False
-        # dedupe assets
         if any(it["type"] == "asset" and it["value"].lower() == pkg.lower() for it in self.items):
             return False
         self.items.append({"type": "asset", "value": pkg})
@@ -374,7 +452,6 @@ class App(tk.Tk):
         if not folder:
             return
         folder_path = str(Path(folder).resolve())
-        # dedupe folder entries
         if any(it["type"] == "folder" and it["value"].lower() == folder_path.lower() for it in self.items):
             self._log("Folder already in list.")
             return
@@ -430,7 +507,8 @@ class App(tk.Tk):
         names = [f.stem.replace("EasyCook_", "") for f in files]
         if DEFAULT_PROFILE_NAME not in names:
             names.insert(0, DEFAULT_PROFILE_NAME)
-        self.profile_selector["values"] = names
+        
+        self.profile_selector.configure(values=names)
         if not self.profile_selector.get() and names:
             self.profile_selector.set(names[0])
 
@@ -499,18 +577,17 @@ class App(tk.Tk):
     def _infer_content_root(self) -> Path | None:
         proj = self.uproject_var.get().strip().strip('"')
         if proj and Path(proj).is_file():
-            pr = Path(proj).resolve().parent  # project root
+            pr = Path(proj).resolve().parent
             c = pr / "Content"
             if c.exists():
                 return c.resolve()
         return None
 
     def _resolve_items_to_assets(self, show_loading: bool = True) -> list[str]:
-        # Gather explicit assets
         assets_set = set(
             it["value"].strip() for it in self.items if it["type"] == "asset"
         )
-        # Expand folders
+
         folders = [Path(it["value"]) for it in self.items if it["type"] == "folder"]
         if not folders:
             return sorted(assets_set)
@@ -522,16 +599,16 @@ class App(tk.Tk):
 
         def open_loading():
             nonlocal loading_win
-            loading_win = tk.Toplevel(self)
+            loading_win = ctk.CTkToplevel(self)
             loading_win.title("Scanning folders…")
             loading_win.geometry("360x120")
             loading_win.transient(self)
             loading_win.grab_set()
-            ttk.Label(loading_win, text="Expanding folder(s) into assets…").pack(pady=(16,8))
-            pb = ttk.Progressbar(loading_win, mode="indeterminate")
+            ctk.CTkLabel(loading_win, text="Expanding folder(s) into assets…").pack(pady=(16,8))
+            pb = ctk.CTkProgressBar(loading_win, mode="indeterminate")
             pb.pack(fill="x", padx=16)
-            pb.start(10)
-            ttk.Label(loading_win, text="This may take a moment for large folders.").pack(pady=8)
+            pb.start()
+            ctk.CTkLabel(loading_win, text="This may take a moment for large folders.").pack(pady=8)
 
         def close_loading():
             if loading_win and loading_win.winfo_exists():
@@ -551,7 +628,7 @@ class App(tk.Tk):
         t = threading.Thread(target=worker, daemon=True)
         t.start()
 
-        # pump UI until done
+
         while not stop_flag["stop"]:
             if loading_win:
                 loading_win.update()
@@ -673,6 +750,46 @@ class App(tk.Tk):
         except queue.Empty:
             pass
         self.after(80, self._poll_log_queue)
+
+    def _create_theme_mode_toggle(self):
+        """Create a toggle for switching between light and dark mode"""
+        theme_frame = ctk.CTkFrame(self)
+        theme_frame.place(relx=0.97, rely=0.02, anchor="ne")
+        
+        switch_var = ctk.StringVar(value="Dark" if ctk.get_appearance_mode() == "Dark" else "Light")
+        switch = ctk.CTkSwitch(
+            theme_frame, 
+            text="Dark Mode", 
+            command=self._toggle_theme_mode,
+            variable=switch_var, 
+            onvalue="Dark", 
+            offvalue="Light"
+        )
+        switch.pack(padx=10, pady=5)
+        self._theme_switch = switch
+        
+    def _toggle_theme_mode(self):
+        """Toggle between light and dark mode"""
+        new_mode = "Dark" if self._theme_switch.get() == "Dark" else "Light"
+        ctk.set_appearance_mode(new_mode)
+        
+        if new_mode == "Dark":
+            bg_color = ctk.ThemeManager.theme["CTkFrame"]["fg_color"][1]
+            fg_color = "#DCE4EE"  
+        else:
+            bg_color = ctk.ThemeManager.theme["CTkFrame"]["fg_color"][0]
+            fg_color = "#1A1A1A"  
+            
+        self.listbox.configure(bg=bg_color, fg=fg_color)
+    
+    def _apply_appearance_mode(self, value):
+        """Apply the appearance mode to a color value"""
+        if isinstance(value, (tuple, list)):
+            if ctk.get_appearance_mode() == "Dark":
+                return value[1]  
+            else:
+                return value[0]  
+        return value
 
     def _log(self, text):
         self.log.configure(state="normal")

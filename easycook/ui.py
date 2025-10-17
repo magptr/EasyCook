@@ -271,7 +271,13 @@ class App(ctk.CTk):
         )
 
         ctk.CTkLabel(profile_top, text="Load Profile:").pack(side="left")
-        self.profile_selector = ctk.CTkComboBox(profile_top, width=200)
+        self.profile_selector = ctk.CTkComboBox(
+            profile_top,
+            width=200,
+            state="readonly",
+            values=[DEFAULT_PROFILE_NAME],
+        )
+        self.profile_selector.set(DEFAULT_PROFILE_NAME)
         self.profile_selector.pack(side="left", padx=(8, 8))
         ctk.CTkButton(profile_top, text="Load", command=self.load_selected_profile).pack(
             side="left", padx=(0, 8)
@@ -456,8 +462,12 @@ class App(ctk.CTk):
             names.insert(0, DEFAULT_PROFILE_NAME)
 
         self.profile_selector.configure(values=names)
-        if not self.profile_selector.get() and names:
-            self.profile_selector.set(names[0])
+        current = (self.profile_selector.get() or "").strip()
+        if (not current) or (current == "CTkComboBox") or (current not in names):
+            if names:
+                self.profile_selector.set(names[0])
+            else:
+                self.profile_selector.set("")
 
     def save_profile(self):
         name = self.profile_name_var.get().strip() or DEFAULT_PROFILE_NAME

@@ -1,8 +1,8 @@
+> [!NOTE]  
+> The successor to EasyCook is here. Try **[EasyCookEditor](https://github.com/magptr/EasyCookEditor)**!
+
 # EasyCook4
 A GUI Python application designed to make asset cooking for Unreal Engine 4 easier, primarily for modding purposes, with a focus on cooked asset projects.
-
-> [!NOTE]  
-> Try the new and improved **[EasyCookEditor](https://github.com/magptr/EasyCookEditor)**!
 
 ![preview](resources/previewnew.png)
 
